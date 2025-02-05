@@ -80,6 +80,57 @@
 - На проверку отправьте получившейся bash-скрипт и конфигурационный файл keepalived, а также скриншот с демонстрацией переезда плавающего ip на другой сервер в случае недоступности порта или файла index.html
 
 
+### *Решение:*
+#### Bash-скрипт: 
+```bash
+#!/bin/bash
+if [[ $(netstat -ant | grep LISTEN | grep :80) ]] && [[ -f /var/www/html/index.nginx-debian.html ]]; then
+  exit 0
+else
+  sudo systemctl stop keepalived
+fi
+```
+#### Конфигурационный файл MASTER:
+```bash
+vrrp_script check_server {
+        script "/home/barsukov/check_server.sh"
+        interval 3
+}
+
+vrrp_instance VI_1 {
+        state MASTER
+        interface enp0s3
+        virtual_router_id 15
+        priority 255
+        advert_int 1
+
+        virtual_ipaddress {
+                192.168.88.99/24
+        }
+
+        track_script {
+                check_server
+        }
+
+}
+```
+#### Конфигурационный файл BACKUP: 
+```bash
+vrrp_instance VI_1 {
+	state BACKUP
+	interface enp0s3
+	virtual_router_id 15
+	priority 155
+	advert_int 1
+
+	virtual_ipaddress {
+		192.168.88.99/24
+	}
+
+}
+```
+
+
 ------
 
 ## Дополнительные задания со звёздочкой*
